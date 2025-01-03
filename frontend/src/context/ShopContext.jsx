@@ -38,8 +38,7 @@ const ShopContextProvider = ({ children }) => {
       setOrders([...tempOrders, ...newOrder]);
       //setCartItems({}); // Clear cart after placing the order
     };
-
-    
+    // add items to cart
     const addToCart = async (itemId, size) => {
         if (!size) {
           toast.error('Please select a size');
