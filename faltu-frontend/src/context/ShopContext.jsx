@@ -17,6 +17,7 @@ const ShopContextProvider = ({ children }) => {
     const [cartItems, setCartItems] = useState({});
     const [orders, setOrders] = useState([]); // New state to hold orders
     const [products, setProducts] = useState([]);
+    const [token, setToken] = useState("");
     const navigate = useNavigate();
 
     const addOrder = () => {
@@ -133,7 +134,8 @@ const ShopContextProvider = ({ children }) => {
         addOrder,
         orders,
         backendURL,
-        
+        token,
+        setToken,
     };
 
     return (
