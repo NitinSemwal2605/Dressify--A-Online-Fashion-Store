@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { backendUrl } from '../App';
 import { assets } from '../assets/assets';
+import { toast } from 'react-hot-toast';
 
-// eslint-disable-next-line react/prop-types
 const Add = ({token }) => {
   // State for images
   const [image1, setImage1] = useState(null);
@@ -31,10 +32,10 @@ const Add = ({token }) => {
   // Handle form submission
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-
+  
     try {
       const formData = new FormData();
-
+  
       formData.append("name", name);
       formData.append("description", description);
       formData.append("price", price);
@@ -42,27 +43,38 @@ const Add = ({token }) => {
       formData.append("subCategory", subCategory);
       formData.append("sizes", JSON.stringify(sizes));
       formData.append("bestseller", bestseller);
-
-      console.log("Form Data:", formData);
-
-
+  
       if (image1) formData.append("image1", image1);
       if (image2) formData.append("image2", image2);
       if (image3) formData.append("image3", image3);
       if (image4) formData.append("image4", image4);
-
-      // console.log(backendUrl);
-      console.log("subCategory:", subCategory);
-
-      const response = await axios.post(`${backendUrl}/api/product/add`,formData, {headers:{token}});
-      
+  
+      const response = await axios.post(`${backendUrl}/api/product/add`, formData, {
+        headers: { token },
+      });
+  
       console.log(response.data);
-      alert("Product added successfully!");
+      toast.success("Product added successfully!");
+  
+      // Reset state to clear fields
+      setImage1(null);
+      setImage2(null);
+      setImage3(null);
+      setImage4(null);
+      setName("");
+      setDescription("");
+      setCategory("Men");
+      setsubCategory("Topwear");
+      setPrice("");
+      setSizes([]);
+      setBestseller(false);
     } catch (error) {
       console.error("Error adding product:", error);
-      alert("Failed to add product. Please try again.");
+      toast.error("Failed to add product. Please try again.");
     }
   };
+  
+  
 
   return (
     <form onSubmit={onSubmitHandler} className='flex flex-col w-full max-w-1xl mx-auto p-8 gap-6'>
@@ -192,6 +204,9 @@ const Add = ({token }) => {
       </button>
     </form>
   );
+};
+Add.propTypes = {
+  token: PropTypes.string.isRequired,
 };
 
 export default Add;

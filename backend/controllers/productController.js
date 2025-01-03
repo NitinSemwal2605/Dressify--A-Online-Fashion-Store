@@ -1,5 +1,5 @@
 
-import {v2 as cloudinary} from 'cloudinary';
+import { v2 as cloudinary } from 'cloudinary';
 import productModel from '../models/productModel.js';
 
 
@@ -71,15 +71,22 @@ const listProducts = async (req, res) => {
 
 // Function for removing product
 const removeProduct = async (req, res) => {
-    try{
-        await productModel.findByIdAndDelete(req.body.id);
-        res.json({success: true, message: 'Product removed successfully'});
+    try {
+        const { id } = req.params; // Use req.params for id
+        console.log("Deleting Product ID:", id); // Add logs for debugging
+        const product = await productModel.findByIdAndDelete(id);
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found.' });
+        }
+
+        res.json({ success: true, message: 'Product removed successfully!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
     }
-    catch(error){
-        console.log(error);
-        res.json({success: false, message: error.message});
-    }
-}
+};
+
 
 
 // function for single product info
