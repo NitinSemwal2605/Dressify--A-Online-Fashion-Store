@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useContext, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -6,9 +7,10 @@ import CartTotal from '../components/CartTotal';
 import Title from '../components/Title';
 import { ShopContext } from '../context/ShopContext';
 
+
 const PlaceOrder = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
-  const { navigate } = useContext(ShopContext);
+  const { navigate, cartItems, products, deliveryCharge, getCartAmount, setCartItems, token, backendURL } = useContext(ShopContext);
 
   // Form input states
   const [formData, setFormData] = useState({
@@ -20,29 +22,86 @@ const PlaceOrder = () => {
     state: '',
     zipcode: '',
     country: '',
-    phone: ''
+    phone: '',
   });
 
-  // Function to handle input changes
+  // Handle input changes
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const name = e.target.name;
+    const value = e.target.value;
+
+    setFormData((data) => ({ ...data, [name]: value }));
   };
+  
 
   // Validate all fields and show toast if any field is empty
-  const handlePlaceOrder = () => {
-    const { firstName, lastName, email, street, city, state, zipcode, country, phone } = formData;
-    if (!firstName || !lastName || !email || !street || !city || !state || !zipcode || !country || !phone) {
-      toast.error("Dear Customer, please fill all details first.");
-      return;
+  const handlePlaceOrder = async (event) => {
+    event.preventDefault();
+    try {
+      
+      let orderItems = [];
+
+      // Collect items from cart
+      for (const items in cartItems) {
+        for (const item in cartItems[items]) {
+          if (cartItems[items][item] > 0) {
+            const itemInfo = structuredClone(products.find((product) => product._id === items));
+            if (itemInfo) {
+              itemInfo.size = item;
+              itemInfo.quantity = cartItems[items][item];
+              orderItems.push(itemInfo);
+            }
+          }
+        }
+      }
+
+      // Prepare order data
+      let orderData = {
+        items: orderItems,
+        amount: getCartAmount() + deliveryCharge,
+        address: formData,
+      };
+
+
+      switch (paymentMethod) {
+        case 'cod':
+          try {
+            const response = await axios.post(
+              `${backendURL}/api/orders/place`,
+              orderData,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+            
+            console.log('Order Response:', response.data); 
+
+            if (response.data.success) {
+              setCartItems({});
+              navigate('/orders');
+            } else {
+              toast.error('Error placing order. Please try again.');
+            }
+          } catch (error) {
+            console.error('Error placing order:', error);
+            toast.error('Error placing order. Please try again.');
+          }
+          break;
+
+        // Handle other cases for 'stripe' or 'razorpay' here
+        default:
+          break;
+      }
+    } catch (error) {
+      console.error('Error creating order data:', error);
+      toast.error('Error creating order data. Please try again.');
     }
-    navigate('/orders');
   };
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between gap-4 pt-5 sm:pt-14 min-h-[80vh] border-t">
+    <form className="flex flex-col sm:flex-row justify-between gap-4 pt-5 sm:pt-14 min-h-[80vh] border-t">
       <ToastContainer />
-      
+
       {/* Left Side */}
       <div className="flex flex-col gap-4 w-full sm:max-w-[480px]">
         <div className="text-xl sm:text-2xl my-3">
@@ -50,6 +109,7 @@ const PlaceOrder = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
+            required
             type="text"
             name="firstName"
             placeholder="First Name"
@@ -67,6 +127,7 @@ const PlaceOrder = () => {
           />
         </div>
         <input
+          required
           type="email"
           name="email"
           placeholder="Email Address"
@@ -75,6 +136,7 @@ const PlaceOrder = () => {
           className="border border-gray-300 rounded py-1.5 px-3.5 w-full"
         />
         <input
+          required
           type="text"
           name="street"
           placeholder="Street"
@@ -84,6 +146,7 @@ const PlaceOrder = () => {
         />
         <div className="flex flex-col sm:flex-row gap-3">
           <input
+            required
             type="text"
             name="city"
             placeholder="City"
@@ -92,6 +155,7 @@ const PlaceOrder = () => {
             className="border border-gray-300 rounded py-1.5 px-3.5 w-full"
           />
           <input
+            required
             type="text"
             name="state"
             placeholder="State"
@@ -102,6 +166,7 @@ const PlaceOrder = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
+            required
             type="text"
             name="zipcode"
             placeholder="Zipcode"
@@ -110,6 +175,7 @@ const PlaceOrder = () => {
             className="border border-gray-300 rounded py-1.5 px-3.5 w-full"
           />
           <input
+            required
             type="text"
             name="country"
             placeholder="Country"
@@ -119,6 +185,7 @@ const PlaceOrder = () => {
           />
         </div>
         <input
+          required
           type="number"
           name="phone"
           placeholder="Phone"
@@ -154,13 +221,13 @@ const PlaceOrder = () => {
 
           {/* Place Order Button */}
           <div className="w-full text-end mt-8">
-            <button onClick={handlePlaceOrder} className="bg-black text-white px-16 py-3 text-sm">
+            <button type="button" onClick={handlePlaceOrder} className="bg-black text-white px-16 py-3 text-sm">
               PLACE ORDER
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 

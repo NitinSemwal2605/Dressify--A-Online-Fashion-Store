@@ -22,7 +22,7 @@ const Login = () => {
         if (response.data && response.data.success) {
           setToken(response.data.token);
           localStorage.setItem('token', response.data.token); // Store token in local storage
-          navigate('/home'); // Navigate to the home page after successful login
+          navigate('/'); // Navigate to the home page after successful login
         } else {
           toast.error(response.data.message || 'Error in logging in');
         }
@@ -34,7 +34,7 @@ const Login = () => {
         if (response.data && response.data.success) {
           setToken(response.data.token);
           localStorage.setItem('token', response.data.token);
-          navigate('/home'); // Navigate to home page after successful signup
+          navigate('/'); // Navigate to home page after successful signup
         } else {
           toast.error(response.data.message || 'Error in registering');
         }
@@ -49,7 +49,7 @@ const Login = () => {
     // Check if user is already logged in
     if (localStorage.getItem('token')) {
       setToken(localStorage.getItem('token')); // If token exists, set it in context
-      navigate('/home'); // Redirect to home if the user is logged in
+      navigate('/'); // Redirect to home if the user is logged in
     }
   }, [token, navigate]);
 

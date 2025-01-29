@@ -7,7 +7,7 @@ const ProductItem = ({ id, images, name, price }) => {
     const { currency } = useContext(ShopContext);
 
     // Log the images to the console
-    console.log('Images:', images);
+    // console.log('Images:', images);
 
     const imageSrc = (images && images.length > 0) ? images[0] : null;
 
