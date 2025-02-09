@@ -4,7 +4,18 @@ import UserModel from '../models/userModel.js';
 const placeOrder = async (req, res) => {
     try {
         const { userId, items, amount, address } = req.body;
-        
+
+        // Validate userId
+        const userExists = await UserModel.findById(userId);
+        if (!userExists) {
+            return res.status(400).json({ success: false, message: "Invalid userId. User not found." });
+        }
+
+        // Check if cart is empty
+        if (!items || items.length === 0) {
+            return res.status(400).json({ success: false, message: "Order cannot be placed with an empty cart." });
+        }
+
         const orderData = {
           userId,
           items,
@@ -12,7 +23,6 @@ const placeOrder = async (req, res) => {
           amount,
           paymentMethod: "COD",
           payment: false, 
-          date: Date.now(),
         };
 
         // Save the new order
@@ -23,13 +33,13 @@ const placeOrder = async (req, res) => {
 
         // Clear the user's cart after placing the order
         await UserModel.findByIdAndUpdate(userId, { cartData: {} });
-        res.json({ success: true, message: 'Order placed successfully' });
+
+        res.status(201).json({ success: true, message: 'Order placed successfully', order: newOrder });
     } catch (error) {
         console.error('Error placing order:', error);
-        res.json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: "Something went wrong while placing the order." });
     }
 };
-
 
 // Placing orders using Stripe Payment Gateway
 const placeOrderStripe = async (req, res) => {
@@ -43,11 +53,28 @@ const placeOrderRazor = async (req, res) => {
 
 // All Orders data for Admin panel
 const allOrders = async (req, res) => {
-  // Admin panel logic to fetch all orders goes here
+  try{
+    const orders = await orderModel.find({});
+    res.status(200).json({ success: true, orders });
+  }
+  catch(error){
+    console.error('Error fetching all orders:', error);
+    res.status(500).json({ success: false, message: "Something went wrong while fetching all orders." });
+  }
 }
 
-// User Orders data for Frontend
+// User Orders data for Frontend 
 const userOrders = async (req, res) => {
+  try{
+    const { userId } = req.body;
+
+    const orders = await orderModel.find({ userId });
+    res.status(200).json({ success: true, orders });
+  }
+  catch(error){
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ success: false, message: "Something went wrong while fetching user orders." });
+  }
   // Logic to fetch user orders for the frontend goes here
 }
 

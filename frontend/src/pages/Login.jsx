@@ -22,6 +22,7 @@ const Login = () => {
         if (response.data && response.data.success) {
           setToken(response.data.token);
           localStorage.setItem('token', response.data.token); // Store token in local storage
+          localStorage.setItem('user', JSON.stringify(response.data.user)); // Store user data in local storage
           navigate('/'); // Navigate to the home page after successful login
         } else {
           toast.error(response.data.message || 'Error in logging in');
@@ -33,7 +34,8 @@ const Login = () => {
 
         if (response.data && response.data.success) {
           setToken(response.data.token);
-          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('token', response.data.token); // Store token in local storage
+          localStorage.setItem('user', JSON.stringify(response.data.user)); // Store user data in local storage
           navigate('/'); // Navigate to home page after successful signup
         } else {
           toast.error(response.data.message || 'Error in registering');
@@ -47,8 +49,13 @@ const Login = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    if (localStorage.getItem('token')) {
-      setToken(localStorage.getItem('token')); // If token exists, set it in context
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (savedToken) {
+      setToken(savedToken); // If token exists, set it in context
+      // Optionally, you can set the user data as well
+      // setUser(JSON.parse(savedUser)); 
       navigate('/'); // Redirect to home if the user is logged in
     }
   }, [token, navigate]);
