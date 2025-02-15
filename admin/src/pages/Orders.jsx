@@ -1,15 +1,15 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
-import { backendUrl } from '../App';
-
+import { backendUrl, currency } from '../App';
+import { assets } from '../assets/assets';
 
 const AdminOrder = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Get token from localStorage
   const token = localStorage.getItem('token');
-  
+
   const fetchAllOrders = async () => {
     if (!token) {
       console.error('Token is required to fetch orders');
@@ -17,12 +17,12 @@ const AdminOrder = () => {
     }
 
     try {
-      const response = await axios.post(`${backendUrl}/api/order/list`, {} , {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await axios.post(`${backendUrl}/api/orders/list`, {}, {
+        headers: { token },
       });
-      console.log('API Response:', response.data);
+
       if (response.data.success) {
-        setOrders(response.data.orders); // Assuming the API returns an orders array
+        setOrders(response.data.orders || []); // Ensure orders array is set correctly
       } else {
         console.error('Failed to fetch orders');
       }
@@ -34,9 +34,14 @@ const AdminOrder = () => {
   };
 
   // Format the date
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A'; // Handle missing date
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   useEffect(() => {
@@ -46,42 +51,50 @@ const AdminOrder = () => {
   if (loading) return <p>Loading orders...</p>;
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold">All Orders</h2>
-      {orders.length === 0 ? (
-        <p>No orders found.</p>
-      ) : (
-        <div className="mt-6">
+    <div className=" bg-gray-50 min-h-screen">
+      <div className="max-w-6xl mx-auto  p-6">
+        <h3 className="text-2xl font-bold mb-6">Orders Page</h3>
+        <div>
           {orders.map((order, index) => (
-            <div key={index} className="border-b py-4">
-              <h3 className="text-lg font-medium">Order #{order._id}</h3>
-              <p>Status: {order.status}</p>
-              <p>Payment Method: {order.paymentMethod}</p>
-              <p>Date: {formatDate(order.createdAt)}</p>
-
-              <div className="mt-4">
+            <div
+              key={order._id || index}
+              className="grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_1fr] lg:grid-cols-[0.5fr_2fr_1fr_1fr_1fr] gap-3 items-start border border-gray-200 p-5 md:p-8 my-3 md:my-4 text-sm text-gray-700 rounded-lg shadow-sm"
+            >
+              <img src={assets.parcel_icon} alt="Parcel Icon" style={{ width: '50px' }} />
+              <div>
                 <h4 className="font-semibold">Items:</h4>
-                <ul>
-                  {order.items.map((item, itemIndex) => (
-                    <li key={itemIndex} className="flex items-center mt-2">
-                      <img
-                        src={item.image || 'https://via.placeholder.com/80'} // Assuming item.image is available
-                        alt={item.name || 'Product Image'}
-                        className="w-16 h-16 object-cover"
-                      />
-                      <div className="ml-4">
-                        <p className="text-sm font-medium">{item.name || 'Unknown Product'}</p>
-                        <p className="text-sm">Quantity: {item.quantity}</p>
-                        <p className="text-sm">Price: {item.price || 'N/A'}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                {order.items?.map((item, idx) => (
+                  <p key={item._id || idx}>
+                    {item.name} x {item.quantity} <span>{item.size}{idx !== order.items.length - 1 && ','}</span>
+                  </p>
+                ))}
+                <p>Name: {order.address?.FirstName} {order.address?.LastName}</p>
+                <div>
+                  <p>Address: {order.address?.Street}</p>
+                  <p>
+                    {order.address?.City}, {order.address?.State}, {order.address?.Country} - {order.address?.Zip}
+                  </p>
+                </div>
+                <p>Phone: {order.address?.Phone}</p>
               </div>
+              <div>
+                <p>Items: {order.items?.length}</p>
+                <p>Method: {order.paymentMethod}</p>
+                <p>Payment: {order.payment ? 'Done' : 'Pending'}</p>
+                <p>Date: {formatDate(order.date)}</p>
+              </div>
+              <p className="font-semibold">{currency}{order.amount}</p>
+              <select defaultValue="Order Placed" className="border border-gray-300 rounded-md p-1">
+                <option value="Order Placed">Order Placed</option>
+                <option value="Packing">Packing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Out for Delivery">Out for Delivery</option>
+                <option value="Delivered">Delivered</option>
+              </select>
             </div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 };
