@@ -4,31 +4,17 @@ import Title from "../components/Title";
 import { ShopContext } from "../context/ShopContext";
 
 const Orders = () => {
-  // Get token and userId from localStorage
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem('user')); 
+  const user = JSON.parse(localStorage.getItem("user"));
   const userId = user ? user._id : null;
 
-  console.log('Token:', token);
-  console.log('UserId:', userId);
-  
   const { products = [], currency = "USD", backendURL } = useContext(ShopContext);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const loadOrderData = async () => {
     try {
-      // Check if token or userId is missing from localStorage
-      if (!token || !userId) {
-        console.error("Missing token or userId:", { token, userId });
-        return;
-      }
-
-      console.log("Fetching orders with:", {
-        backendURL,
-        userId,
-        token: `Bearer ${token.substring(0, 10)}...`, // Hide full token for security
-      });
+      if (!token || !userId) return;
 
       const response = await axios.post(
         `${backendURL}/api/orders/userOrders`,
@@ -36,40 +22,61 @@ const Orders = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log("API Response:", response.data); // Debug API response
+      if (response.data.success) {
+        let allOrdersItem = response.data.orders.flatMap((order) =>
+          order.items.map((item) => ({
+            ...item,
+            status: order.status,
+            payment: order.payment,
+            paymentMethod: order.paymentMethod,
+            date: order.createdAt,
+            orderId: order._id,
+          }))
+        );
 
-      if (response.data.success && response.data.orders.length > 0) {
-        let allOrdersItem = [];
-
-        response.data.orders.forEach((order) => {
-          order.items.forEach((item) => {
-            allOrdersItem.push({
-              ...item,
-              status: order.status,
-              payment: order.payment,
-              paymentMethod: order.paymentMethod,
-              date: order.createdAt,
-            });
-          });
-        });
-
-        console.log("Processed Orders:", allOrdersItem);
         setOrders(allOrdersItem.reverse());
-      } else {
-        console.warn("No orders found for user.");
       }
     } catch (error) {
-      console.error("Error fetching orders:", error.response?.data || error.message);
+      console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Function to format date properly
-  const formatDate = (dateString) => {
-    if (!dateString) return "Unknown Date";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+  // Function to update order status in backend & UI
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const response = await axios.put(
+        `${backendURL}/api/orders/updateStatus`,
+        { orderId, status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.orderId === orderId ? { ...order, status: newStatus } : order
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
+
+  // Function to get the next status
+  const getNextStatus = (currentStatus) => {
+    const statusFlow = ["Placed", "Packing", "Shipped", "Delivered"];
+    const currentIndex = statusFlow.indexOf(currentStatus);
+    return currentIndex < statusFlow.length - 1 ? statusFlow[currentIndex + 1] : currentStatus;
+  };
+
+  // Handler for "Track Order" button click
+  const handleTrackOrder = (orderId, currentStatus) => {
+    const nextStatus = getNextStatus(currentStatus);
+    if (nextStatus !== currentStatus) {
+      updateOrderStatus(orderId, nextStatus);
+    }
   };
 
   useEffect(() => {
@@ -91,8 +98,6 @@ const Orders = () => {
           {orders.map((order, index) => {
             const productData = products?.find((product) => product._id === order?.productId) || {};
 
-            console.log("Product Data:", productData); // Log product data to verify
-
             return (
               <div
                 key={index}
@@ -100,7 +105,7 @@ const Orders = () => {
               >
                 <div className="flex items-start gap-6">
                   <img
-                    src={order.images && order.images[0] ? order.images[0] : "https://via.placeholder.com/80"}
+                    src={order.images?.[0] || "https://via.placeholder.com/80"}
                     alt={order.name || "Product Image"}
                     className="w-16 sm:w-20"
                   />
@@ -115,17 +120,37 @@ const Orders = () => {
                       <p>Size: {order.size}</p>
                     </div>
                     <p className="mt-2">
-                      Date: <span className="text-gray-400">{formatDate(order.date)}</span>
+                      Date: <span className="text-gray-400">{new Date(order.date).toLocaleDateString()}</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex justify-between md:w-1/2">
                   <div className="flex items-center gap-2">
-                    <p className="min-w-2 h-2 rounded-full bg-green-400"></p>
-                    <p className="text-sm md:text-base">Ready to ship</p>
+                    <p
+                      className={`min-w-2 h-2 rounded-full ${
+                        order.status === "Shipped"
+                          ? "bg-blue-400"
+                          : order.status === "Packing"
+                          ? "bg-yellow-400"
+                          : "bg-green-400"
+                      }`}
+                    ></p>
+                    <select
+                      value={order.status}
+                      onChange={(e) => updateOrderStatus(order.orderId, e.target.value)}
+                      className="border px-2 py-1 rounded-sm text-gray-700"
+                    >
+                      <option value="Placed">Placed</option>
+                      <option value="Packing">Packing</option>
+                      <option value="Shipped">Shipped</option>
+                      <option value="Delivered">Delivered</option>
+                    </select>
                   </div>
-                  <button className="border px-4 py-2 text-sm font-medium rounded-sm text-gray-700">
+                  <button
+                    className="border px-4 py-2 text-sm font-medium rounded-sm text-gray-700"
+                    onClick={() => handleTrackOrder(order.orderId, order.status)}
+                  >
                     Track Order
                   </button>
                 </div>
