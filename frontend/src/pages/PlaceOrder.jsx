@@ -6,10 +6,12 @@ import { assets } from '../assets/frontend_assets/assets';
 import CartTotal from '../components/CartTotal';
 import Title from '../components/Title';
 import { ShopContext } from '../context/ShopContext';
+import { useNavigate } from 'react-router-dom';
 
 const PlaceOrder = () => {
+  const navigate = useNavigate();
+  const { cartItems, products, deliveryCharge, getCartAmount, setCartItems, token, backendURL } = useContext(ShopContext);
   const [paymentMethod, setPaymentMethod] = useState('cod');
-  const { navigate, cartItems, products, deliveryCharge, getCartAmount, setCartItems, token, backendURL } = useContext(ShopContext);
 
   const [formData, setFormData] = useState({
     FirstName: '',
@@ -39,80 +41,81 @@ const PlaceOrder = () => {
 
   const handlePlaceOrder = async (event) => {
     event.preventDefault();
+    if (!validateForm()) return;
+
     try {
       let orderItems = [];
-  
-      // Collect items from cart
-      for (const items in cartItems) {
-        for (const item in cartItems[items]) {
-          if (cartItems[items][item] > 0) {
-            const itemInfo = structuredClone(products.find((product) => product._id === items));
+      for (const productId in cartItems) {
+        for (const size in cartItems[productId]) {
+          if (cartItems[productId][size] > 0) {
+            const itemInfo = JSON.parse(JSON.stringify(products.find((product) => product._id === productId)));
             if (itemInfo) {
-              itemInfo.size = item;
-              itemInfo.quantity = cartItems[items][item];
+              itemInfo.size = size;
+              itemInfo.quantity = cartItems[productId][size];
               orderItems.push(itemInfo);
             }
           }
         }
       }
-  
+
       if (!orderItems.length) {
         toast.error("Your cart is empty!");
         return;
       }
-  
-      // Ensure userId is available
-      const user = JSON.parse(localStorage.getItem('user')); // Fetch user object from localStorage
-      const userId = user ? user._id : null; // Extract the _id from the user object
-  
+
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user ? user._id : null;
+
       if (!userId) {
         toast.error("User is not authenticated!");
         return;
       }
-  
-      // Prepare order data
+
       let orderData = {
-        userId, // Now sending the correct userId
+        userId,
         items: orderItems,
         amount: getCartAmount() + deliveryCharge,
         address: formData,
       };
-  
-      switch (paymentMethod) {
-        case 'cod':
-          try {
-            const response = await axios.post(
-              `${backendURL}/api/orders/place`,
-              orderData,
-              {
-                headers: { Authorization: `Bearer ${token}` },
-              }
-            );
-  
-            console.log('Order Response:', response.data);
-  
-            if (response.data.success) {
-              setCartItems({});
-              navigate('/orders');
-            } else {
-              toast.error('Error placing order. Please try again.');
-            }
-          } catch (error) {
-            console.error('Error placing order:', error);
-            toast.error('Error placing order. Please try again.');
+
+      if (paymentMethod === 'cod') {
+        const response = await axios.post(
+          `${backendURL}/api/orders/place`,
+          orderData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          setCartItems({});
+          navigate('/orders');
+        } else {
+          toast.error('Error placing order. Please try again.');
+        }
+      } else if (paymentMethod === 'stripe') {
+        const responseStripe = await axios.post(
+          `${backendURL}/api/orders/stripe`,
+          orderData,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (responseStripe.data.success) {
+          const { session_url } = responseStripe.data;
+          if (session_url) {
+            window.location.href = session_url;
+          } else {
+            toast.error('Error: Stripe session URL is missing!');
           }
-          break;
-  
-        default:
-          toast.error("Please select a valid payment method.");
-          break;
+        } else {
+          toast.error('Error processing payment. Please try again.');
+        }
+      } else {
+        toast.error("Please select a valid payment method.");
       }
     } catch (error) {
-      console.error('Error creating order data:', error);
-      toast.error('Error creating order data. Please try again.');
+      console.error('Error placing order:', error);
+      toast.error('Error processing order. Please try again.');
     }
   };
-  
 
   return (
     <form className="flex flex-col sm:flex-row justify-between gap-4 pt-5 sm:pt-14 min-h-[80vh] border-t">
@@ -124,7 +127,7 @@ const PlaceOrder = () => {
           <input
             key={key}
             required
-            type={key === 'Email' ? 'Email' : key === 'phone' ? 'number' : 'text'}
+            type={key === 'Email' ? 'email' : key === 'Phone' ? 'tel' : 'text'}
             name={key}
             placeholder={key.replace(/([A-Z])/g, ' $1')}
             value={formData[key]}
