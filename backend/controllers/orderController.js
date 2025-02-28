@@ -100,6 +100,26 @@ const placeOrderStripe = async (req, res) => {
   }
 };
 
+const verifyStripe = async (req, res) => {
+  const {orderId, success, userId} = req.body;
+
+  try{
+    if(success === 'true'){
+      await orderModel.findByIdAndUpdate(orderId, {payment: true});
+      await UserModel.findByIdAndUpdate(userId, {cartData: {}});
+      res.json({success: true, message: 'Order placed successfully'});
+    }
+    else{
+      await orderModel.findByIdAndDelete(orderId);
+      res.json({success: false, message: 'Order failed'});
+    }
+  }
+  catch(error){
+    console.error('Error verifying order:', error);
+    res.status(500).json({success: false, message: "Something went wrong while verifying the order."});
+  }
+};
+
 const placeOrderRazor = async (req, res) => {
   // Razorpay payment logic goes here
 };
@@ -146,4 +166,4 @@ const updateStatus = async (req, res) => {
   }
 };
 
-export { allOrders, placeOrder, placeOrderRazor, placeOrderStripe, updateStatus, userOrders };
+export { verifyStripe, allOrders, placeOrder, placeOrderRazor, placeOrderStripe, updateStatus, userOrders };

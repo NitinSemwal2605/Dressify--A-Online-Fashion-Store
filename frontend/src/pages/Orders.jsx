@@ -28,7 +28,7 @@ const Orders = () => {
             ...item,
             status: order.status,
             payment: order.payment,
-            paymentMethod: order.paymentMethod,
+            paymentMethod: order.paymentMethod || "Unknown",
             date: order.createdAt,
             orderId: order._id,
           }))
@@ -43,7 +43,6 @@ const Orders = () => {
     }
   };
 
-  // Function to update order status in backend & UI
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const response = await axios.put(
@@ -64,14 +63,12 @@ const Orders = () => {
     }
   };
 
-  // Function to get the next status
   const getNextStatus = (currentStatus) => {
     const statusFlow = ["Placed", "Packing", "Shipped", "Delivered"];
     const currentIndex = statusFlow.indexOf(currentStatus);
     return currentIndex < statusFlow.length - 1 ? statusFlow[currentIndex + 1] : currentStatus;
   };
 
-  // Handler for "Track Order" button click
   const handleTrackOrder = (orderId, currentStatus) => {
     const nextStatus = getNextStatus(currentStatus);
     if (nextStatus !== currentStatus) {
@@ -122,6 +119,7 @@ const Orders = () => {
                     <p className="mt-2">
                       Date: <span className="text-gray-400">{new Date(order.date).toLocaleDateString()}</span>
                     </p>
+                    <p className="mt-1 text-gray-500">Payment Method: {order.paymentMethod}</p>
                   </div>
                 </div>
 
